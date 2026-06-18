@@ -1,0 +1,33 @@
+services:
+  dvwa:
+    image: vulnerables/web-dvwa
+    container_name: dvwa_target
+    ports:
+      - "8080:80"
+    networks:
+      - tester-net
+
+  waf:
+    image: ghcr.io/coreruleset/modsecurity-crs:nginx
+    container_name: modsec_waf
+    environment:
+      - BACKEND=http://dvwa:80
+
+      - PARANOIA=1
+      - BLOCKING_PARANOIA=1
+
+      - MODSEC_RULE_ENGINE=on
+
+      - ANOMALY_INBOUND=10
+      - ANOMALY_OUTBOUND=10
+
+    ports:
+      - "80:8080"
+    depends_on:
+      - dvwa
+    networks:
+      - tester-net
+
+networks:
+  tester-net:
+    driver: bridge
