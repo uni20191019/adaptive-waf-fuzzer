@@ -3,5 +3,4 @@ __pycache__/
 *.pyo
 .continue/
 .vscode/
-logs/
 .DS_Store
